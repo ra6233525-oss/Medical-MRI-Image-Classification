@@ -1,0 +1,6 @@
+Flask
+Flask-Cors
+tensorflow
+Pillow
+numpy
+Werkzeug

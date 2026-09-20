@@ -1,0 +1,7 @@
+.venv/
+model_test/.venv/
+model-test/.venv/
+__pycache__/
+*.pyc
+.vscode/
+model_test/
