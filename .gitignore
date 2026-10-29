@@ -1,7 +1,12 @@
 .venv/
+.venv_backup/
 model_test/.venv/
 model-test/.venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .vscode/
-model_test/
+scratch/
+*.bak
+.DS_Store
