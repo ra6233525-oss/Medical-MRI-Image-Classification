@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Explainable Four-Class Brain MRI Classification with VGG16 and Grad-CAM</title>
+<style>
+  :root {
+    --navy: #0b1f33;
+    --navy-2: #12344d;
+    --teal: #0e7490;
+    --teal-soft: #e6f5f7;
+    --emerald: #047857;
+    --purple: #6d28d9;
+    --ink: #18232e;
+    --muted: #536372;
+    --rule: #cfdde4;
+    --paper: #ffffff;
+    --wash: #f5f9fb;
+    --danger: #b42318;
+    --danger-soft: #fdf0ee;
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm 17mm 14mm 17mm;
+    @bottom-left {
+      content: "NeuroScan AI · Academic Report";
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 7.4pt;
+      color: #6b7c89;
+    }
+    @bottom-right {
+      content: counter(page) " / " counter(pages);
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 7.4pt;
+      color: #6b7c89;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html { background: #dfe8ed; }
+
+  body {
+    margin: 0 auto;
+    max-width: 180mm;
+    padding: 14mm 0 18mm;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 9.7pt;
+    line-height: 1.46;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @media print {
+    html { background: #fff; }
+    body {
+      max-width: none;
+      margin: 0;
+      padding: 0;
+      font-size: 9.35pt;
+      line-height: 1.43;
+    }
+    .no-print { display: none !important; }
+  }
+
+  /* ---------- Cover / masthead ---------- */
+  .masthead {
+    border-top: 4px solid var(--navy);
+    padding-top: 9mm;
+    margin-bottom: 7mm;
+  }
+
+  .kicker {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 8.2pt;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin: 0 0 3mm;
+  }
+
+  h1 {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 24pt;
+    line-height: 1.13;
+    letter-spacing: -.015em;
+    color: var(--navy);
+    margin: 0 0 3.5mm;
+    font-weight: 750;
+  }
+
+  .subtitle {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 12.2pt;
+    line-height: 1.35;
+    color: var(--navy-2);
+    margin: 0 0 5mm;
+    font-weight: 500;
+  }
+
+  .byline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2mm 7mm;
+    padding: 3.5mm 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 8.3pt;
+    color: var(--muted);
+  }
+
+  .byline strong { color: var(--navy); font-weight: 650; }
+
+  /* ---------- Abstract ---------- */
+  .abstract {
+    margin: 6mm 0 6mm;
+    padding: 5mm 5.5mm;
+    background: linear-gradient(135deg, #f2fafb 0%, #f8f5ff 100%);
+    border-left: 4px solid var(--teal);
+  }
+
+  .abstract h2 {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 9.4pt;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin: 0 0 2mm;
+    border: 0;
+    padding: 0;
+  }
+
+  .abstract p { margin: 0 0 2.2mm; text-align: justify; }
+  .abstract p:last-child { margin-bottom: 0; }
+
+  .keywords {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 8.2pt;
+    color: var(--muted);
+    margin-top: 2.5mm;
+  }
+
+  .keywords strong { color: var(--navy); }
+
+  /* ---------- Sections ---------- */
+  h2.section {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 13.2pt;
+    color: var(--navy);
+    margin: 5.2mm 0 2.4mm;
+    padding-bottom: 1.2mm;
+    border-bottom: 1.5px solid var(--rule);
+    break-after: avoid;
+  }
+
+  h2.section .num {
+    color: var(--teal);
+    margin-right: 2.5mm;
+  }
+
+  h3 {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 10.2pt;
+    color: var(--navy-2);
+    margin: 3.6mm 0 1.4mm;
+    break-after: avoid;
+  }
+
+  p { margin: 0 0 2.2mm; text-align: justify; hyphens: auto; }
+
+  strong { color: var(--navy); }
+  em { color: inherit; }
+
+  a { color: var(--teal); text-decoration: none; }
+
+  .lead {
+    font-size: 10.3pt;
+    color: #253746;
+  }
+
+  /* ---------- Tables ---------- */
+  .table-wrap { margin: 2.6mm 0 3.4mm; break-inside: avoid; }
+
+  .table-caption, .figure-caption {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 8.1pt;
+    line-height: 1.4;
+    color: var(--muted);
+    margin: 0 0 1.6mm;
+  }
+
+  .table-caption strong, .figure-caption strong { color: var(--navy); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 8.6pt;
+    line-height: 1.32;
+  }
+
+  thead th {
+    background: var(--navy);
+    color: #fff;
+    text-align: left;
+    padding: 1.9mm 2mm;
+    font-weight: 650;
+    letter-spacing: .015em;
+  }
+
+  tbody td, tbody th {
+    padding: 1.65mm 2mm;
+    border-bottom: 1px solid #dbe5ea;
+    vertical-align: top;
+  }
+
+  tbody th {
+    text-align: left;
+    font-weight: 650;
+    color: var(--navy);
+    background: #f7fafb;
+  }
+
+  tbody tr:nth-child(even) td { background: #fbfdfe; }
+
+  .num-cell { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .center { text-align: center; }
+  .diag { font-weight: 700; color: #065f46; background: #e6f6f0 !important; }
+  .critical { color: #9a3412; background: #fff1e6 !important; font-weight: 650; }
+  .muted-cell { color: #8a99a5; }
+  .total-row th, .total-row td {
+    border-top: 1.4px solid var(--navy);
+    border-bottom: 1.4px solid var(--navy);
+    background: #eef5f8 !important;
+    font-weight: 700;
+  }
+
+  /* ---------- Figures ---------- */
+  figure {
+    margin: 3.4mm 0 3.8mm;
+    break-inside: avoid;
+  }
+
+  .diagram {
+    border: 1px solid var(--rule);
+    background: #fbfdfe;
+    padding: 4mm 3.5mm;
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 1.5mm;
+  }
+
+  .flow .node {
+    flex: 1 1 0;
+    min-width: 26mm;
+    border: 1px solid #bfd3dc;
+    background: #fff;
+    padding: 2mm 2.2mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .flow .node .n-title {
+    font-size: 7.9pt;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1.25;
+  }
+
+  .flow .node .n-sub {
+    font-size: 7pt;
+    color: var(--muted);
+    line-height: 1.3;
+    margin-top: .6mm;
+  }
+
+  .flow .arrow {
+    align-self: center;
+    color: var(--teal);
+    font-size: 11pt;
+    font-weight: 700;
+    padding: 0 .2mm;
+  }
+
+  .flow .node.backbone { border-color: var(--teal); background: var(--teal-soft); }
+  .flow .node.head { border-color: #c4b5fd; background: #f5f3ff; }
+
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1.5mm;
+    align-items: stretch;
+  }
+
+  .pipeline .step {
+    border: 1px solid var(--rule);
+    background: #fff;
+    padding: 2mm;
+    font-size: 7.3pt;
+    line-height: 1.3;
+    color: var(--muted);
+    position: relative;
+  }
+
+  .pipeline .step b {
+    display: block;
+    color: var(--navy);
+    font-size: 7.7pt;
+    margin-bottom: .5mm;
+  }
+
+  .pipeline .step:not(:last-child)::after {
+    content: "›";
+    position: absolute;
+    right: -2.1mm;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--teal);
+    font-size: 12pt;
+    font-weight: 700;
+    z-index: 2;
+  }
+
+  /* ---------- Callouts ---------- */
+  .callout {
+    margin: 3.5mm 0 4mm;
+    padding: 3.2mm 4mm;
+    background: var(--teal-soft);
+    border: 1px solid #b9e0e6;
+    border-left: 4px solid var(--teal);
+    break-inside: avoid;
+  }
+
+  .callout.warn {
+    background: var(--danger-soft);
+    border-color: #f2c9c1;
+    border-left-color: var(--danger);
+  }
+
+  .callout .label {
+    display: block;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 7.6pt;
+    font-weight: 750;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: .8mm;
+  }
+
+  .callout.warn .label { color: var(--danger); }
+  .callout p { margin: 0; }
+  .callout p + p { margin-top: 1.6mm; }
+
+  /* ---------- Bar chart ---------- */
+  .bars {
+    border: 1px solid var(--rule);
+    background: #fbfdfe;
+    padding: 3.5mm 4mm 2.5mm;
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 25mm 1fr 14mm;
+    align-items: center;
+    gap: 2.5mm;
+    margin-bottom: 2.2mm;
+  }
+
+  .bar-row .bar-label { font-size: 8.1pt; font-weight: 650; color: var(--navy); }
+  .bar-row .track { height: 4.2mm; background: #e7eef2; position: relative; }
+  .bar-row .fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--teal), #22a6b3);
+    position: relative;
+  }
+  .bar-row .fill.weak {
+    background: linear-gradient(90deg, #b42318, #e0664f);
+  }
+  .bar-row .bar-value {
+    font-size: 8pt;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--navy);
+    font-weight: 700;
+  }
+  .bar-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-left: 27.5mm;
+    margin-right: 16.5mm;
+    border-top: 1px solid var(--rule);
+    padding-top: 1mm;
+    color: #8394a1;
+    font-size: 6.8pt;
+  }
+
+  /* ---------- References ---------- */
+  .references {
+    font-size: 8.15pt;
+    line-height: 1.34;
+    padding-left: 5mm;
+    margin: 1.6mm 0 0;
+  }
+
+  .references li { margin-bottom: 1.15mm; text-align: left; }
+
+  .colophon {
+    margin-top: 4mm;
+    padding-top: 2.4mm;
+    border-top: 1px solid var(--rule);
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 7.6pt;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .avoid-break, .results-open { break-inside: avoid; }
+
+  .appendix table { font-size: 7.3pt; line-height: 1.2; }
+  .appendix tbody td, .appendix tbody th { padding: 0.9mm 1.5mm; }
+  .appendix thead th { padding: 1mm 1.5mm; }
+  .appendix .table-caption { margin-bottom: 1mm; }
+  .appendix code { font-size: 7.15pt; }
+  .page-break { break-before: page; }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5mm;
+  }
+
+  .stat-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2.5mm;
+    margin: 2.5mm 0 3.4mm;
+    break-inside: avoid;
+  }
+
+  .stat {
+    border: 1px solid var(--rule);
+    background: #fbfdfe;
+    padding: 2.8mm 3mm;
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+
+  .stat .v {
+    display: block;
+    font-size: 15pt;
+    font-weight: 750;
+    line-height: 1.1;
+    color: var(--navy);
+    letter-spacing: -.02em;
+  }
+
+  .stat .k {
+    display: block;
+    font-size: 7.2pt;
+    line-height: 1.3;
+    color: var(--muted);
+    margin-top: 1mm;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+
+  .screen-note {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 8pt;
+    color: var(--muted);
+    text-align: center;
+    margin: 0 0 5mm;
+  }
+
+  @media screen {
+    .screen-note { display: block; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <p class="kicker">Academic Research Report · Version 1.0</p>
+  <h1>Explainable Four-Class Brain MRI Classification with VGG16 Transfer Learning and Grad-CAM</h1>
+  <p class="subtitle">NeuroScan AI: system design, held-out evaluation, and responsible-use analysis</p>
+  <div class="byline">
+    <span><strong>Project:</strong> NeuroScan AI</span>
+    <span><strong>Date:</strong> 1 November 2026</span>
+    <span><strong>Artifact version:</strong> 1.2.0</span>
+    <span><strong>Evaluation:</strong> 1,600 held-out images</span>
+  </div>
+</header>
+
+<section class="abstract">
+  <h2>Abstract</h2>
+  <p>This report describes NeuroScan AI, an end-to-end research prototype for four-class brain MRI slice classification. The system couples an existing VGG16 transfer-learning model with genuine gradient-weighted class activation mapping (Grad-CAM), a Flask inference API, a SQLite patient and scan store, and self-contained HTML reports. The deployed network receives a 128 × 128 RGB slice, uses an ImageNet-pretrained VGG16 backbone with block5 fine-tuned, and ends in a compact classifier head: Flatten, Dropout(0.30), Dense(128, ReLU), Dropout(0.20), and a four-way softmax. We evaluated the saved weights on all 1,600 images in the held-out test split, with no sampling or threshold tuning. Overall accuracy was <strong>90.94%</strong> (1,455/1,600), with macro precision 92.00%, macro recall 90.94%, and macro F1 90.64%. The aggregate result conceals an important failure mode: glioma recall was only <strong>69.25%</strong>, and 97 of the 123 missed gliomas were predicted as meningioma. The report argues that per-class sensitivity, not accuracy alone, must govern how such a prototype is presented. Grad-CAM is treated as model-attention evidence, not as a lesion boundary or radiological finding. The system is an academic prototype, not a medical device, and has not been externally validated or clinically tested.</p>
+  <p class="keywords"><strong>Keywords:</strong> brain MRI; VGG16; transfer learning; Grad-CAM; explainable artificial intelligence; Flask; SQLite; medical image classification</p>
+</section>
+
+<h2 class="section"><span class="num">1</span>Introduction</h2>
+
+<p class="lead">Brain MRI is a routine part of neuro-oncology assessment, but image interpretation is time-consuming, observer-dependent, and constrained by specialist availability. A machine-learning system that ranks a small set of common appearances could support triage, teaching, or retrospective audit. It cannot, however, substitute for a radiologist, a volumetric study, or clinical context. This distinction frames the present work.</p>
+
+<p>NeuroScan AI is an academic prototype that classifies a single MRI slice into one of four categories: glioma, meningioma, no tumor, and pituitary tumor. The project had two goals. The first was engineering: preserve an existing trained VGG16 artifact and expose it through a reproducible application with real inference, real persistence, real reports, and inspectable explanations. The second was evidentiary: evaluate the deployed weights on the complete held-out split and report the result honestly, including the class that performs poorly.</p>
+
+<p>The contribution is therefore not a new architecture or a claim of clinical novelty. It is a documented system that connects a transfer-learning classifier to genuine Grad-CAM, stores the resulting evidence against patient and scan identifiers, and produces a report that separates what the model output says from what a clinician might conclude. The report also records the limits of that evidence: a single internal test split, no external validation, no calibration study, and no reader study.</p>
+
+<h2 class="section"><span class="num">2</span>Background and Related Work</h2>
+
+<p>VGG16 is a deep convolutional network introduced by Simonyan and Zisserman, built from repeated 3 × 3 convolutions and max-pooling stages followed by fully connected layers [1]. Its uniform convolutional design makes it a useful transfer-learning backbone: early and middle layers learn generic edge, texture, and shape features, while later layers can be adapted to a new label space. Transfer learning is attractive when the target dataset is much smaller than the source dataset, because low- and mid-level filters need not be learned from scratch [2].</p>
+
+<p>Explainability is a separate problem. Grad-CAM computes the gradient of a target class score with respect to the feature maps of a chosen convolutional layer, global-average-pools those gradients into channel weights, and combines the feature maps into a coarse localization map [3]. The result shows where the network's evidence for a class is concentrated. It does not segment a lesion, establish a boundary, or prove causality. A heatmap can look plausible while the prediction is wrong, which is why the interface and report describe Grad-CAM as model attention rather than radiological evidence.</p>
+
+<p>Much of the medical-imaging literature reports aggregate accuracy on a single split. That practice can hide clinically consequential asymmetries. In a four-class problem, a model may achieve high accuracy by performing well on the majority or easiest classes while missing a large fraction of one tumor type. This report therefore reports the full confusion matrix and per-class sensitivity alongside the aggregate score.</p>
+
+<h2 class="section"><span class="num">3</span>Materials and Methods</h2>
+
+<h3>3.1 Dataset</h3>
+
+<p>The project dataset is balanced across four classes. The training split contains 5,600 images and the test split contains 1,600 images, with 1,400 training and 400 test images per class. All 1,600 test images were used in the evaluation; no image was excluded, subsampled, or reweighted after the fact.</p>
+
+<div class="table-wrap">
+  <p class="table-caption"><strong>Table 1.</strong> Dataset composition by split and class. Counts are exact file counts from the project dataset directories.</p>
+  <table>
+    <thead>
+      <tr><th>Class</th><th class="num-cell">Training</th><th class="num-cell">Testing</th><th class="num-cell">Total</th><th>Role in the label space</th></tr>
+    </thead>
+    <tbody>
+      <tr><th>Glioma</th><td class="num-cell">1,400</td><td class="num-cell">400</td><td class="num-cell">1,800</td><td>Intra-axial glial tumor appearance</td></tr>
+      <tr><th>Meningioma</th><td class="num-cell">1,400</td><td class="num-cell">400</td><td class="num-cell">1,800</td><td>Extra-axial meningeal tumor appearance</td></tr>
+      <tr><th>No tumor</th><td class="num-cell">1,400</td><td class="num-cell">400</td><td class="num-cell">1,800</td><td>No tumor detected by the AI model</td></tr>
+      <tr><th>Pituitary</th><td class="num-cell">1,400</td><td class="num-cell">400</td><td class="num-cell">1,800</td><td>Sellar / pituitary-region tumor appearance</td></tr>
+      <tr class="total-row"><th>Total</th><td class="num-cell">5,600</td><td class="num-cell">1,600</td><td class="num-cell">7,200</td><td>Balanced four-class split</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>3.2 Preprocessing</h3>
+
+<p>Inference preprocessing is deliberately simple and is implemented in one place, <em>ml_model.preprocess_pil</em>. Each image is converted to RGB, resized to 128 × 128 with <strong>bilinear</strong> interpolation, converted to <code>float32</code>, divided by 255 to map pixel values to [0, 1], and expanded to a batch dimension. No ImageNet mean/std normalization is applied by the deployed inference path. The evaluation script reproduces the same steps so that test-time preprocessing matches application behavior.</p>
+
+<h3>3.3 Model architecture</h3>
+
+<p>The saved Keras artifact contains an ImageNet-pretrained VGG16 backbone with block5 convolutional layers fine-tuned and earlier blocks frozen. The classifier head is intentionally small. A Flatten layer converts the 4 × 4 × 512 backbone output into 8,192 features; Dropout(0.30) precedes a 128-unit ReLU layer; Dropout(0.20) precedes the final four-unit softmax. The saved configuration compiles the model with sparse categorical cross-entropy and sparse categorical accuracy. Class index order is fixed as glioma, meningioma, notumor, pituitary, and must not be changed without retraining.</p>
+
+<figure>
+  <div class="diagram">
+    <div class="flow">
+      <div class="node"><span class="n-title">Input</span><span class="n-sub">128 × 128 × 3 RGB<br>pixel / 255</span></div>
+      <div class="arrow">→</div>
+      <div class="node backbone"><span class="n-title">VGG16 backbone</span><span class="n-sub">13 Conv2D layers<br>block1–4 frozen<br>block5 fine-tuned</span></div>
+      <div class="arrow">→</div>
+      <div class="node"><span class="n-title">Flatten</span><span class="n-sub">4 × 4 × 512<br>= 8,192 features</span></div>
+      <div class="arrow">→</div>
+      <div class="node head"><span class="n-title">Classifier head</span><span class="n-sub">Dropout 0.30<br>Dense 128, ReLU<br>Dropout 0.20</span></div>
+      <div class="arrow">→</div>
+      <div class="node"><span class="n-title">Softmax</span><span class="n-sub">4 classes<br>probabilities 0–100%</span></div>
+    </div>
+  </div>
+  <p class="figure-caption"><strong>Figure 1.</strong> Deployed architecture, reconstructed from the saved Keras configuration. The application does not retrain, replace, or modify this graph.</p>
+</figure>
+
+<h3>3.4 Training configuration and artifact scope</h3>
+
+<p>The deployed artifact records the compiled loss, metric, and layer configuration. Optimizer settings, epoch count, and the exact fine-tuning schedule are not stored in the saved model files, so this report does not invent them. The evaluation below concerns the <em>saved weights</em> and their behavior on the held-out split, not a reproduction of the original training run. That distinction matters: the reported metrics are a property of the artifact that serves predictions, not of an idealized training notebook.</p>
+
+<h3>3.5 Grad-CAM</h3>
+
+<p>For a predicted class <em>c</em>, the implementation captures feature maps <em>A<sup>k</sup></em> from <code>block5_conv3</code>, computes the gradient of the class score with respect to those maps, global-average-pools the gradients into channel weights, forms a weighted sum, applies ReLU, and normalizes by the maximum activation. The activation map is resized to the original image dimensions and rendered with a Jet colormap. Two outputs are retained: the <strong>raw heatmap</strong> and a <strong>55% original / 45% heatmap overlay</strong>. They are different images and both are persisted.</p>
+
+<figure>
+  <div class="diagram">
+    <div class="pipeline">
+      <div class="step"><b>1 · Forward pass</b>Capture block5_conv3 feature maps and class scores.</div>
+      <div class="step"><b>2 · Gradient</b>Differentiate the predicted class score with respect to the maps.</div>
+      <div class="step"><b>3 · Pool</b>Global-average-pool gradients into channel weights.</div>
+      <div class="step"><b>4 · Combine</b>Weighted sum, ReLU, normalize by maximum.</div>
+      <div class="step"><b>5 · Render</b>Resize to image size and apply Jet colormap.</div>
+      <div class="step"><b>6 · Overlay</b>Blend 55% MRI with 45% heatmap.</div>
+    </div>
+  </div>
+  <p class="figure-caption"><strong>Figure 2.</strong> Grad-CAM computation and rendering pipeline. The heatmap is model-attention evidence, not a segmentation mask or a radiological finding.</p>
+</figure>
+
+<h3>3.6 Application implementation</h3>
+
+<p>The Flask API validates uploads, looks up or registers a patient, runs inference, computes Grad-CAM, persists the scan and report, and returns the original image, raw heatmap, overlay, four probabilities, identifiers, and report links. SQLite stores patients, scans, and reports with foreign keys and additive, idempotent migrations. Reports embed patient/scan/report identifiers, all images, all four probabilities, model facts, a model-output-only summary, and a disclaimer. The frontend is a static HTML/CSS/JavaScript application with a dark navy, cyan, turquoise, purple, and emerald visual system. Motion is confined to the marketing page; MRI and Grad-CAM images are never animated, and reduced-motion preferences are honored.</p>
+
+<h3>3.7 Evaluation protocol</h3>
+
+<p>Evaluation used the saved weights and the full test split. Each image was resized with bilinear interpolation to 128 × 128, scaled to [0, 1], and passed through the network in batches of 64. The predicted class was the argmax of the four softmax outputs. Accuracy, per-class precision, recall, F1, and the confusion matrix were computed from the resulting 1,600 predictions. CPU inference took 355.27 seconds in total, approximately 222 ms per image, including preprocessing and batch overhead. No test-time augmentation, threshold tuning, or post-hoc class reweighting was used.</p>
+
+<h2 class="section"><span class="num">4</span>Results</h2>
+
+<h3>4.1 Overall performance</h3>
+
+<p>The model classified 1,455 of 1,600 held-out images correctly. Because the test split is balanced, macro and weighted averages coincide to two decimal places. The aggregate figures suggest strong performance, but they are not sufficient to characterize the model: the class-level results show a large asymmetry in sensitivity.</p>
+
+<div class="stat-strip">
+  <div class="stat"><span class="v">90.94%</span><span class="k">Overall accuracy<br>1,455 / 1,600</span></div>
+  <div class="stat"><span class="v">92.00%</span><span class="k">Macro precision</span></div>
+  <div class="stat"><span class="v">90.94%</span><span class="k">Macro recall</span></div>
+  <div class="stat"><span class="v">90.64%</span><span class="k">Macro F1</span></div>
+</div>
+
+<div class="table-wrap">
+  <p class="table-caption"><strong>Table 2.</strong> Held-out performance on all 1,600 test images. Precision, recall, and F1 are percentages; support is the number of test images per class.</p>
+  <table>
+    <thead>
+      <tr><th>Class</th><th class="num-cell">Precision</th><th class="num-cell">Recall</th><th class="num-cell">F1</th><th class="num-cell">Support</th></tr>
+    </thead>
+    <tbody>
+      <tr><th>Glioma</th><td class="num-cell">97.54%</td><td class="num-cell critical">69.25%</td><td class="num-cell">80.99%</td><td class="num-cell">400</td></tr>
+      <tr><th>Meningioma</th><td class="num-cell">78.94%</td><td class="num-cell">96.50%</td><td class="num-cell">86.84%</td><td class="num-cell">400</td></tr>
+      <tr><th>No tumor</th><td class="num-cell">95.20%</td><td class="num-cell">99.25%</td><td class="num-cell">97.18%</td><td class="num-cell">400</td></tr>
+      <tr><th>Pituitary</th><td class="num-cell">96.34%</td><td class="num-cell">98.75%</td><td class="num-cell">97.53%</td><td class="num-cell">400</td></tr>
+      <tr class="total-row"><th>Macro average</th><td class="num-cell">92.00%</td><td class="num-cell">90.94%</td><td class="num-cell">90.64%</td><td class="num-cell">1,600</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>4.2 Class-level sensitivity</h3>
+
+<p>No-tumor and pituitary classes performed strongly, with recall of 99.25% and 98.75% respectively. Meningioma recall was also high at 96.50%, but its precision fell to 78.94% because the class absorbed a large number of glioma errors. Glioma precision was high at 97.54%, yet recall was only 69.25%. In other words, when the model predicted glioma it was usually right, but it missed almost one in three gliomas.</p>
+
+<figure>
+  <div class="bars">
+    <div class="bar-row"><span class="bar-label">Glioma</span><div class="track"><div class="fill weak" style="width:69.25%"></div></div><span class="bar-value">69.25%</span></div>
+    <div class="bar-row"><span class="bar-label">Meningioma</span><div class="track"><div class="fill" style="width:96.50%"></div></div><span class="bar-value">96.50%</span></div>
+    <div class="bar-row"><span class="bar-label">No tumor</span><div class="track"><div class="fill" style="width:99.25%"></div></div><span class="bar-value">99.25%</span></div>
+    <div class="bar-row"><span class="bar-label">Pituitary</span><div class="track"><div class="fill" style="width:98.75%"></div></div><span class="bar-value">98.75%</span></div>
+    <div class="bar-axis"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+  </div>
+  <p class="figure-caption"><strong>Figure 3.</strong> Per-class recall on the held-out split. Glioma recall is the dominant weakness and is highlighted in red.</p>
+</figure>
+
+<h3>4.3 Confusion matrix and error structure</h3>
+
+<p>The confusion matrix makes the failure mode explicit. Of 400 gliomas, 277 were classified correctly, 97 were classified as meningioma, 18 as no tumor, and 8 as pituitary. The 97 glioma-to-meningioma errors are the single largest off-diagonal block and explain why meningioma precision is depressed while glioma recall is low. The no-tumor and pituitary rows are comparatively clean, with only three and five errors respectively.</p>
+
+<div class="table-wrap">
+  <p class="table-caption"><strong>Table 3.</strong> Confusion matrix on all 1,600 test images. Rows are ground truth; columns are model prediction. Cells show count and row percentage; diagonal cells are shaded green, and the largest error block is shaded orange.</p>
+  <table>
+    <thead>
+      <tr><th>True \ Predicted</th><th class="num-cell">Glioma</th><th class="num-cell">Meningioma</th><th class="num-cell">No tumor</th><th class="num-cell">Pituitary</th><th class="num-cell">Recall</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>Glioma</th>
+        <td class="num-cell diag">277<br><span class="muted-cell">69.25%</span></td>
+        <td class="num-cell critical">97<br><span class="muted-cell">24.25%</span></td>
+        <td class="num-cell">18<br><span class="muted-cell">4.50%</span></td>
+        <td class="num-cell">8<br><span class="muted-cell">2.00%</span></td>
+        <td class="num-cell">69.25%</td>
+      </tr>
+      <tr>
+        <th>Meningioma</th>
+        <td class="num-cell">6<br><span class="muted-cell">1.50%</span></td>
+        <td class="num-cell diag">386<br><span class="muted-cell">96.50%</span></td>
+        <td class="num-cell">1<br><span class="muted-cell">0.25%</span></td>
+        <td class="num-cell">7<br><span class="muted-cell">1.75%</span></td>
+        <td class="num-cell">96.50%</td>
+      </tr>
+      <tr>
+        <th>No tumor</th>
+        <td class="num-cell">1<br><span class="muted-cell">0.25%</span></td>
+        <td class="num-cell">2<br><span class="muted-cell">0.50%</span></td>
+        <td class="num-cell diag">397<br><span class="muted-cell">99.25%</span></td>
+        <td class="num-cell">0<br><span class="muted-cell">0.00%</span></td>
+        <td class="num-cell">99.25%</td>
+      </tr>
+      <tr>
+        <th>Pituitary</th>
+        <td class="num-cell">0<br><span class="muted-cell">0.00%</span></td>
+        <td class="num-cell">4<br><span class="muted-cell">1.00%</span></td>
+        <td class="num-cell">1<br><span class="muted-cell">0.25%</span></td>
+        <td class="num-cell diag">395<br><span class="muted-cell">98.75%</span></td>
+        <td class="num-cell">98.75%</td>
+      </tr>
+      <tr class="total-row">
+        <th>Column total</th><td class="num-cell">284</td><td class="num-cell">489</td><td class="num-cell">417</td><td class="num-cell">410</td><td class="num-cell">1,600</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout warn">
+  <span class="label">Primary failure mode</span>
+  <p><strong>Glioma sensitivity is 69.25%.</strong> The model missed 123 of 400 gliomas, and 97 of those errors were routed to meningioma. High overall accuracy and high glioma precision do not offset this result. For any hypothetical screening use, a missed glioma would be the most consequential error pattern in this evaluation.</p>
+</div>
+
+<h3>4.4 Deployment verification</h3>
+
+<p>The report distinguishes model performance from application correctness. The deployed system was exercised with isolated SQLite databases and a real held-out image. Integration checks covered health, patient registration, prediction, Grad-CAM persistence, report endpoints, validation failures, and service metadata. A browser audit drove the real upload flow and checked the rendered original MRI, raw heatmap, overlay, four probabilities, report actions, history, console errors, and failed requests. A separate layout audit covered four viewports and reduced-motion behavior, and a generated-report audit checked the real backend-rendered report at desktop and mobile widths plus print media. Production compatibility was tested on a byte-for-byte copy of the existing database; the original file hash was unchanged.</p>
+
+<div class="table-wrap">
+  <p class="table-caption"><strong>Table 4.</strong> Verification results for the deployed application. These checks establish that the software path works; they do not establish clinical validity.</p>
+  <table>
+    <thead>
+      <tr><th>Area</th><th class="num-cell">Result</th><th>What it establishes</th></tr>
+    </thead>
+    <tbody>
+      <tr><th>Backend integration</th><td class="num-cell">58 / 58</td><td>Routes, inference, Grad-CAM, persistence, reports, and validation</td></tr>
+      <tr><th>Browser/UI audit</th><td class="num-cell">48 / 48</td><td>Real upload and rendering, report actions, history, no console/network errors</td></tr>
+      <tr><th>Responsive/motion audit</th><td class="num-cell">24 / 24</td><td>1440, 1024, 768, and 390 px; reduced motion; non-animated scan images</td></tr>
+      <tr><th>Generated report layout</th><td class="num-cell">12 / 12</td><td>Real report at 1440 and 390 px; print media; disclaimer present</td></tr>
+      <tr><th>Production DB copy</th><td class="num-cell">Passed</td><td>Additive migration, legacy records readable, original hash unchanged</td></tr>
+      <tr><th>Held-out evaluation</th><td class="num-cell">1,600 images</td><td>90.94% accuracy, full per-class matrix, no sampling</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section"><span class="num">5</span>Discussion</h2>
+
+<h3>5.1 What the results support</h3>
+
+<p>The results support a narrow claim: the saved VGG16 artifact can classify this four-class, single-slice test split with 90.94% accuracy, and its behavior is stable enough to be served through a real application. The no-tumor and pituitary classes are strong on this split, and meningioma recall is high. The engineering path also works end to end: a user can upload an image, receive four probabilities, inspect a genuine Grad-CAM heatmap and overlay, and open a report containing the same evidence.</p>
+
+<p>The results do not support a claim of clinical readiness. Glioma recall of 69.25% is a material weakness, and the confusion matrix shows that the model systematically routes many gliomas toward meningioma. Aggregate accuracy is a poor summary of that behavior. A clinician reviewing the system would need to know not only that it is usually right, but also which class it tends to miss and where those misses go.</p>
+
+<h3>5.2 Why Grad-CAM is presented carefully</h3>
+
+<p>Grad-CAM adds inspectability, but it can also create false confidence. A heatmap that highlights a plausible region does not prove that the region is pathological, that the prediction is correct, or that the model used a clinically meaningful feature. The application therefore returns both the raw heatmap and the overlay, labels them as model attention, and states that Grad-CAM is not segmentation. The report summary is generated from model output only: it names the highest-probability class, gives the probability, lists the ranking, and notes that the output is statistical. It does not invent anatomical findings, measurements, staging, or recommendations.</p>
+
+<h3>5.3 Limitations and responsible use</h3>
+
+<p>The evaluation is internal to one project dataset. There is no external, multi-site, prospective, or reader-study validation. The model sees one 128 × 128 slice and loses volumetric and acquisition context. Only four classes are represented, so other tumors, infections, artefacts, and normal variants are outside the label space. Softmax probabilities are not calibrated, and no subgroup analysis by age, sex, scanner, or site was performed. The application is a prototype: it has no authentication, authorization, audit logging, encryption at rest, or regulatory clearance. The SQLite database contains identifiable data and must not be exposed to untrusted networks.</p>
+
+<div class="callout">
+  <span class="label">Responsible-use statement</span>
+  <p>NeuroScan AI is an academic research prototype. Its output is a statistical classification, not a diagnosis or radiological finding. “No Tumor Detected by AI Model” does not rule out disease. Clinical decisions require a qualified radiologist or physician. The software is not a certified medical device and must not be used for patient care.</p>
+</div>
+
+<h2 class="section"><span class="num">6</span>Conclusion</h2>
+
+<p>This report documented a complete VGG16 + Grad-CAM + Flask + SQLite prototype and evaluated the saved weights on all 1,600 held-out images. The system achieved 90.94% accuracy, but the more important result is the class-level asymmetry: glioma recall was 69.25%, with 97 of 123 missed gliomas predicted as meningioma. That finding is reported without concealment because it changes how the system should be described and used.</p>
+
+<p>The engineering work demonstrates that genuine inference, genuine Grad-CAM, persistent patient/scan/report records, and self-contained reports can be combined in a reproducible academic prototype. The next steps are external validation, calibration and subgroup analysis, a targeted effort to improve glioma sensitivity, and the security and governance work required before any real clinical data is handled. Until those steps are complete, the correct framing is research prototype, not medical device.</p>
+
+<h2 class="section"><span class="num">7</span>References</h2>
+
+<ol class="references">
+  <li>Simonyan, K., &amp; Zisserman, A. (2015). Very Deep Convolutional Networks for Large-Scale Image Recognition. <em>International Conference on Learning Representations (ICLR)</em>.</li>
+  <li>Pan, S. J., &amp; Yang, Q. (2010). A Survey on Transfer Learning. <em>IEEE Transactions on Knowledge and Data Engineering</em>, 22(10), 1345–1359.</li>
+  <li>Selvaraju, R. R., Cogswell, M., Das, A., Vedantam, R., Parikh, D., &amp; Batra, D. (2017). Grad-CAM: Visual Explanations from Deep Networks via Gradient-Based Localization. <em>IEEE International Conference on Computer Vision (ICCV)</em>, 618–626.</li>
+  <li>TensorFlow and Keras documentation. Model serialization, gradient tape, and image preprocessing utilities. https://www.tensorflow.org/ and https://keras.io/</li>
+  <li>Flask documentation. Routing, request handling, and response objects. https://flask.palletsprojects.com/</li>
+  <li>SQLite documentation. Foreign keys, schema alteration, and transactions. https://www.sqlite.org/docs.html</li>
+</ol>
+
+<div class="colophon">
+  <strong>Document scope.</strong> This report describes artifact version 1.2.0 as verified on 1 November 2026. Metrics are from the project’s internal held-out split and are not external validation. The report does not contain patient identifiers from the production database; deployment tests used isolated databases and synthetic audit records. Model weights remain unchanged from the existing project artifact.
+</div>
+
+<section class="appendix">
+<h2 class="section"><span class="num">A</span>Appendix: Reproducibility and Verification Commands</h2>
+
+<p>The verification scripts are local utilities under <code>scratch/</code> (git-ignored), not a packaged CI suite. They document the checks behind Table 4. Database-writing tests use an isolated <code>NEUROSCAN_DB_PATH</code>; the production compatibility test reads a copy and re-hashes the original.</p>
+
+<div class="table-wrap">
+  <p class="table-caption"><strong>Table A1.</strong> Local commands used to reproduce the verification results in this report.</p>
+  <table>
+    <thead>
+      <tr><th>Check</th><th>Command</th><th class="num-cell">Expected result</th></tr>
+    </thead>
+    <tbody>
+      <tr><th>Backend integration</th><td><code>.\.venv\Scripts\python.exe scratch\test_backend_integration.py</code></td><td class="num-cell">58 / 58, exit 0</td></tr>
+      <tr><th>Browser/UI audit</th><td><code>node scratch\browser_audit_v2.js</code></td><td class="num-cell">48 / 48</td></tr>
+      <tr><th>Responsive/motion</th><td><code>node scratch\layout_audit.js</code></td><td class="num-cell">24 / 24</td></tr>
+      <tr><th>Generated report layout</th><td><code>node scratch\report_layout_audit.js</code></td><td class="num-cell">12 / 12</td></tr>
+      <tr><th>Production DB copy</th><td><code>.\.venv\Scripts\python.exe scratch\test_production_db_compat.py</code></td><td class="num-cell">Hash unchanged</td></tr>
+      <tr><th>Full evaluation</th><td><code>.\.venv\Scripts\python.exe scratch\evaluate_test_set.py</code></td><td class="num-cell">1,600 images, 90.94%</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+</body>
+</html>

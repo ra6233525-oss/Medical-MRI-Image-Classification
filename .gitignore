@@ -10,3 +10,31 @@ __pycache__/
 scratch/
 *.bak
 .DS_Store
+
+# Security & Data Integrity: Exclude SQLite database and runtime artifacts
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.db-journal
+backend/data/*.db
+*.log
+.env
+.env.local
+temp_uploads/
+uploads/
+
+# Local agent/skill guidance, not a project deliverable
+SKILL.md
+
+# Datasets and local model experiments must never be committed
+dataset/
+model_test/
+model-test/
+*.dcm
+*.nii
+*.nii.gz
+*.nrrd
+*.mha
+*.mhd
